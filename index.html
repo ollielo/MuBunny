@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>A Bunny Under the Microscope</title>
+    <style>
+        body {margin: 0}
+        canvas {width: 100%; height: 100%}
+        #info {
+            color: #fff;
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            z-index: 100;
+            display:block;
+        }
+        #info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+    </style>
+</head>
+<body>
+<div id="info">
+    <a href="http://threejs.org" target="_blank">three.js</a> -
+    Simulating Electron Micrograph with <a href="https://code.google.com/p/glslang-library/">Shaders</a>.
+    Model from <a href="http://www.cc.gatech.edu/projects/large_models/" target="_blank">
+    The GeorgiaTech Lagre Geometric Model Archive</a>.
+</div>
+<script src="js/three.js"></script>
+<script src="js/controls/TrackballControls.js"></script>
+<script src="js/loaders/VTKLoader.js"></script>
+
+<script id="vertexShader" type="x-shader/x-vertex">
+    // Copyright (C) 2007 Dave Griffiths
+    // Fluxus Shader Library
+    // ---------------------
+    // Facing Ratio Shader
+    // Blends from inner to outer colour depending
+    // on the facing ratio of the fragment. Useful for
+    // getting the scanning electron microscope look.
+
+    // Copyright (C) 2015 Li-Ta Lo
+    // Modification to fit Three.js/WebGL's Vertex Shader API.
+    varying vec3 N;
+    varying vec4 V;
+
+    void main()
+    {
+        N = normalMatrix * normal;
+        V = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+</script>
+
+<script id="fragmentShader" type="x-shader/x-vertex">
+    // Copyright (C) 2007 Dave Griffiths
+    // Fluxus Shader Library
+    // ---------------------
+    // Facing Ratio Shader
+    // Blends from inner to outer colour depending
+    // on the facing ratio of the fragment. Useful for
+    // getting the scanning electron microscope look.
+
+    uniform vec4 OuterColour;
+    uniform vec4 InnerColour;
+
+    varying vec3 N;
+    varying vec4 V;
+
+    void main()
+    {
+        float ratio = abs(dot(normalize(V.xyz),normalize(N)));
+        clamp(ratio,0.0,1.0);
+        gl_FragColor = mix(OuterColour,InnerColour,ratio);
+    }
+</script>
+<script>
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.01, 10000);
+    camera.position.z = 0.2;
+    scene.add(camera);
+
+    var controls = new THREE.TrackballControls( camera );
+    
+    var material = new THREE.ShaderMaterial({
+        uniforms: {
+            OuterColour: {type: 'v4', value: new THREE.Vector4(0.5, 0.5, 0.6, 1.0)},
+            InnerColour: {type: 'v4', value: new THREE.Vector4(0.0, 0.0, 0.0, 1.0)}
+        },
+        vertexShader: document.getElementById('vertexShader').textContent,
+        fragmentShader: document.getElementById('fragmentShader').textContent
+    });
+    
+    var loader = new THREE.VTKLoader();
+    loader.load('models/bunny.vtk', function (geometry) {
+        geometry.computeVertexNormals();
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.setY( - 0.09 );
+        scene.add(mesh);
+    });
+    
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    
+    function render() {
+        requestAnimationFrame(render);
+        renderer.render(scene, camera);
+        controls.update();
+    }
+    render();
+</script>
+</body>
+</html>
